@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Webhooks_Events" ALTER COLUMN "receivedAt" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "nextRetryAt" DROP NOT NULL;
