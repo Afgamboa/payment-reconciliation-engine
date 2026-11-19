@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Webhooks_Events {
+  id        String   @id @default(uuid())
+  provider  String   
+  eventId   String    
+  paymentId  String
+  rawPayload    Json   
+  status   String
+  attempts Int
+  receivedAt DateTime @default(now())
+  nextRetryAt DateTime?
+
+@@unique([provider, eventId])
+}
+
