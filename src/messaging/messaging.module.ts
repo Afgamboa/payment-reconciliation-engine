@@ -2,7 +2,7 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { PAYMENTS_QUEUE } from '../common/events.js';
-import { EventConsumer } from './rabbitmq.consumer.js';
+import { EventPublisher } from './rabbitmq.publisher.js';
 
 @Module({})
 export class MessagingModule {
@@ -27,9 +27,8 @@ export class MessagingModule {
           },
         ]),
       ],
-      controllers: [EventConsumer],
-      providers: [ClientsModule],
-      exports: [ClientsModule],
+      providers: [EventPublisher],
+      exports: [EventPublisher],
     };
   }
 }
