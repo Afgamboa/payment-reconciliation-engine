@@ -1,18 +1,13 @@
 import { createHmac } from 'node:crypto';
 
-const secret = "6539a13fb57ab688c2c3860f6db99f3077ad8ffbafd6e71ed56b0a4b8186cf02";  
-const body = JSON.stringify({
-  eventId: 'evt_123',
-  paymentId: 'pay_456',
-  provider: 'WOMPI',
-  status: 'COMPLETED',
-  amount: 50000,
-  currency: 'COP',
-});
+// Usage: node --env-file=.env dist/webhooks/signature.js '<raw json body>'
+// Prints the value to send in the x-webhook-signature header.
+const secret = process.env.WEBHOOK_SECRET;
+const body = process.argv[2];
 
-const signature = createHmac('sha256', secret || '')
-  .update(body)
-  .digest('hex');
+if (!secret || !body) {
+  console.error('WEBHOOK_SECRET env var and a JSON body argument are required');
+  process.exit(1);
+}
 
-console.log(signature);
-console.log(body);
+console.log(createHmac('sha256', secret).update(body).digest('hex'));

@@ -1,7 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { PaymentStatusEvent } from '../common/events.js';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, timeout } from 'rxjs';
+import {
+  PAYMENT_EVENT_PATTERN,
+  PaymentEventMessage,
+} from '../common/events.js';
+
+const PUBLISH_TIMEOUT_MS = 2000;
 
 @Injectable()
 export class EventPublisher {
@@ -12,21 +17,22 @@ export class EventPublisher {
     private readonly client: ClientProxy,
   ) {}
 
-  async publish(pattern: string, payload: PaymentStatusEvent): Promise<void> {
-    const eventB = this.eventBuild(payload);
+  // The message only wakes the worker up; the event itself lives in PostgreSQL,
+  // so a lost message is recovered by the worker's polling.
+  async notify(message: PaymentEventMessage): Promise<void> {
     try {
-      await lastValueFrom(this.client.emit(pattern, eventB));
-    } catch (error) {
-      this.logger.error(
-        `Could not publish ${pattern} (${eventB.eventId}): ${String(error)}`,
+      await lastValueFrom(
+        this.client
+          .emit(PAYMENT_EVENT_PATTERN, message)
+          .pipe(timeout(PUBLISH_TIMEOUT_MS)),
       );
+    } catch (error) {
+      this.logger.warn({
+        message: 'Could not notify worker, polling will pick the event up',
+        eventId: message.id,
+        provider: message.provider,
+        error: String(error),
+      });
     }
-  }
-
-  eventBuild(payload: PaymentStatusEvent): PaymentStatusEvent {
-    return {
-      ...payload,
-      occurredAt: new Date().toISOString(),
-    };
   }
 }

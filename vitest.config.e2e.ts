@@ -1,11 +1,18 @@
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import swc from 'unplugin-swc';
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  plugins: [tsconfigPaths(), swc.vite()],
   test: {
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    fileParallelism: false,
+    env: {
+      WORKER_ENABLED: 'false',
+      WEBHOOK_SECRET: 'e2e-webhook-secret',
+      ADMIN_API_KEY: 'e2e-admin-key',
+    },
   },
 });

@@ -1,23 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { ValidationPipe } from '@nestjs/common';
+import { configureApp } from './app.setup.js';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { PAYMENTS_QUEUE } from './common/events.js';
+import { StructuredLogger } from './common/logging/structured-logger.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
+    bufferLogs: true,
   });
-  app.setGlobalPrefix('api');
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+  app.useLogger(new StructuredLogger());
+  app.enableShutdownHooks();
+  configureApp(app);
 
   const configService = app.get(ConfigService);
 

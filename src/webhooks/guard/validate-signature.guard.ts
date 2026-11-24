@@ -1,36 +1,36 @@
 import {
   CanActivate,
   ExecutionContext,
+  Injectable,
   RawBodyRequest,
   UnauthorizedException,
 } from '@nestjs/common';
-import * as crypto from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 
+@Injectable()
 export class ValidateSignature implements CanActivate {
-  canActivate(context: ExecutionContext) {
-    const httpContext = context.switchToHttp();
-    const request = httpContext.getRequest<RawBodyRequest<Request>>();
-    const secret = process.env.WEBHOOK_SECRET;
+  constructor(private readonly config: ConfigService) {}
 
-    const signatureHeader = request.headers['x-webhook-signature'] as string;
+  canActivate(context: ExecutionContext) {
+    const request = context
+      .switchToHttp()
+      .getRequest<RawBodyRequest<Request>>();
+    const secret = this.config.getOrThrow<string>('WEBHOOK_SECRET');
+    const signatureHeader = request.headers['x-webhook-signature'];
     const rawBody = request.rawBody;
-    if (!signatureHeader || !rawBody || !secret) {
-      throw new UnauthorizedException('Missing signature, raw body, or secret');
+
+    if (typeof signatureHeader !== 'string' || !rawBody) {
+      throw new UnauthorizedException('Missing signature or raw body');
     }
 
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('hex');
-
-    const receivedHex = signatureHeader.replace(/^sha256=/, '');
-    const expectedBuf = Buffer.from(signature, 'hex');
-    const receivedBuf = Buffer.from(receivedHex, 'hex');
+    const expected = createHmac('sha256', secret).update(rawBody).digest();
+    const received = Buffer.from(signatureHeader.replace(/^sha256=/, ''), 'hex');
 
     if (
-      expectedBuf.length !== receivedBuf.length ||
-      !crypto.timingSafeEqual(expectedBuf, receivedBuf)
+      expected.length !== received.length ||
+      !timingSafeEqual(expected, received)
     ) {
       throw new UnauthorizedException('Invalid HMAC signature');
     }
